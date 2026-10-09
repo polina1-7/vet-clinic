@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель — Добрый Доктор</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="site-header"></header>
+    <main class="container">
+
+        <!-- ФОРМА ВХОДА -->
+        <div id="login-block">
+            <h1>Вход в админ-панель</h1>
+            <div id="login-alert"></div>
+            <form id="login-form" style="max-width:400px;">
+                <input type="text" name="login" placeholder="Логин" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <button type="submit">Войти</button>
+            </form>
+        </div>
+
+        <!-- ПАНЕЛЬ АДМИНА -->
+        <div id="admin-panel" style="display:none;">
+            <h1>Админ-панель</h1>
+            <p><button id="logout-btn" class="btn-danger">Выйти</button></p>
+
+            <h2>Добавить услугу</h2>
+            <form id="add-service-form" style="max-width:500px;">
+                <input type="text" name="title" placeholder="Название" required>
+                <input type="text" name="description" placeholder="Описание">
+                <input type="number" step="0.01" name="price" placeholder="Цена" required>
+                <button type="submit">Добавить</button>
+            </form>
+
+            <h2>Услуги</h2>
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Название</th><th>Цена</th><th></th></tr>
+                </thead>
+                <tbody id="services-table"></tbody>
+            </table>
+
+            <h2>Заявки</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Владелец</th><th>Питомец</th>
+                        <th>Телефон</th><th>Услуга</th><th>Врач</th>
+                        <th>Дата</th><th></th>
+                    </tr>
+                </thead>
+                <tbody id="apps-table"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">© 2025 Ветклиника «Добрый Доктор»</div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        loadHeader();
+
+        const loginBlock = document.getElementById('login-block');
+        const adminPanel = document.getElementById('admin-panel');
+
+        // Проверка авторизации
+        fetch('/api/auth/me')
+            .then(r => r.json())
+            .then(data => {
+                if (data.loggedIn) showPanel();
+            });
+
+        function showPanel() {
+            loginBlock.style.display = 'none';
+            adminPanel.style.display = 'block';
+            loadServices();
+            loadApps();
+        }
+
+        function showLogin() {
+            loginBlock.style.display = 'block';
+            adminPanel.style.display = 'none';
+        }
+
+        // Вход
+        document.getElementById('login-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const alertBox = document.getElementById('login-alert');
+            const data = Object.fromEntries(new FormData(e.target));
+
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                showPanel();
+            } else {
+                showAlert(alertBox, result.error || 'Ошибка входа', 'error');
+            }
+        });
+
+        // Выход
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            showLogin();
+        });
+
+        // Услуги
+        async function loadServices() {
+            const res = await fetch('/api/services');
+            const data = await res.json();
+            document.getElementById('services-table').innerHTML = data.map(s => `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${escapeHtml(s.title)}</td>
+                    <td>${formatPrice(s.price)}</td>
+                    <td>
+                        <button class="btn-danger"
+                            onclick="deleteService(${s.id})">Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function deleteService(id) {
+            if (!confirm('Удалить услугу?')) return;
+            await fetch('/api/services/' + id, { method: 'DELETE' });
+            loadServices();
+        }
+
+        // Добавление услуги
+        document.getElementById('add-service-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            const res = await fetch('/api/services', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                e.target.reset();
+                loadServices();
+            }
+        });
+
+        // Заявки
+        async function loadApps() {
+            const res = await fetch('/api/appointments');
+            if (!res.ok) return;
+            const data = await res.json();
+            document.getElementById('apps-table').innerHTML = data.map(a => `
+                <tr>
+                    <td>${a.id}</td>
+                    <td>${escapeHtml(a.owner_name)}</td>
+                    <td>${escapeHtml(a.pet_name)}</td>
+                    <td>${escapeHtml(a.phone)}</td>
+                    <td>${escapeHtml(a.service_title || '—')}</td>
+                    <td>${escapeHtml(a.doctor_name || '—')}</td>
+                    <td>${new Date(a.appointment_date).toLocaleString('ru-RU')}</td>
+                    <td>
+                        <button class="btn-danger"
+                            onclick="deleteApp(${a.id})">Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function deleteApp(id) {
+            if (!confirm('Удалить заявку?')) return;
+            await fetch('/api/appointments/' + id, { method: 'DELETE' });
+            loadApps();
+        }
+    </script>
+</body>
+</html>

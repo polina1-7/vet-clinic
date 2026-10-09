@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Услуги — Добрый Доктор</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="site-header"></header>
+    <main class="container">
+        <h1>Наши услуги</h1>
+
+        <form class="filters" id="filter-form">
+            <input type="text" name="search" placeholder="Поиск...">
+            <input type="number" name="minPrice" placeholder="Мин. цена" value="0">
+            <select name="sort">
+                <option value="id">По дате</option>
+                <option value="title">По названию</option>
+                <option value="price">По цене</option>
+            </select>
+            <select name="order">
+                <option value="DESC">Убыв.</option>
+                <option value="ASC">Возр.</option>
+            </select>
+            <button type="submit">Применить</button>
+        </form>
+
+        <div class="grid" id="services-list">Загрузка...</div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">© 2025 Ветклиника «Добрый Доктор»</div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        loadHeader();
+
+        const form = document.getElementById('filter-form');
+        const list = document.getElementById('services-list');
+
+        async function loadServices() {
+            list.innerHTML = 'Загрузка...';
+            const params = new URLSearchParams(new FormData(form));
+            const res = await fetch('/api/services?' + params);
+            const data = await res.json();
+
+            if (!data.length) {
+                list.innerHTML = '<p>Ничего не найдено.</p>';
+                return;
+            }
+
+            list.innerHTML = data.map(s => `
+                <div class="card">
+                    <h3>${escapeHtml(s.title)}</h3>
+                    <p>${escapeHtml(s.description)}</p>
+                    <p style="margin-top:8px;color:#2e8b57;font-weight:600;">
+                        ${formatPrice(s.price)}
+                    </p>
+                </div>
+            `).join('');
+            animateCards();
+        }
+
+        form.addEventListener('submit', e => { e.preventDefault(); loadServices(); });
+        loadServices();
+    </script>
+</body>
+</html>

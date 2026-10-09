@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Запись — Добрый Доктор</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="site-header"></header>
+    <main class="container">
+        <h1>Онлайн-запись</h1>
+        <div id="alert-container"></div>
+
+        <form id="booking-form" style="max-width:500px;">
+            <input type="text" name="owner_name" placeholder="Ваше имя *" required>
+            <input type="text" name="pet_name" placeholder="Кличка питомца *" required>
+            <input type="tel" name="phone" placeholder="Телефон *" required>
+
+            <select name="service_id" id="service-select">
+                <option value="">— Выберите услугу —</option>
+            </select>
+
+            <select name="doctor_id" id="doctor-select">
+                <option value="">— Выберите врача —</option>
+            </select>
+
+            <input type="datetime-local" name="appointment_date" required>
+            <textarea name="comment" placeholder="Комментарий" rows="3"></textarea>
+            <button type="submit">Записаться</button>
+        </form>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">© 2025 Ветклиника «Добрый Доктор»</div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        loadHeader();
+
+        // Загружаем услуги и врачей
+        Promise.all([
+            fetch('/api/services').then(r => r.json()),
+            fetch('/api/doctors').then(r => r.json())
+        ]).then(([services, doctors]) => {
+            document.getElementById('service-select').innerHTML =
+                '<option value="">— Выберите услугу —</option>' +
+                services.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('');
+
+            document.getElementById('doctor-select').innerHTML =
+                '<option value="">— Выберите врача —</option>' +
+                doctors.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+        });
+
+        // Отправка формы
+        const form = document.getElementById('booking-form');
+        const alertBox = document.getElementById('alert-container');
+
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+
+            const phone = form.phone.value.trim();
+            if (!/^[\d\s\+\-\(\)]{7,20}$/.test(phone)) {
+                showAlert(alertBox, 'Некорректный номер телефона', 'error');
+                return;
+            }
+
+            const data = Object.fromEntries(new FormData(form));
+            const res = await fetch('/api/appointments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                showAlert(alertBox, '✅ Заявка принята! Мы свяжемся с вами.', 'success');
+                form.reset();
+            } else {
+                showAlert(alertBox, '❌ ' + (result.error || 'Ошибка'), 'error');
+            }
+        });
+    </script>
+</body>
+</html>

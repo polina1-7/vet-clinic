@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Врачи — Добрый Доктор</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="site-header"></header>
+    <main class="container">
+        <h1>Наши врачи</h1>
+        <div class="grid" id="doctors-list">Загрузка...</div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">© 2025 Ветклиника «Добрый Доктор»</div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        loadHeader();
+
+        fetch('/api/doctors')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('doctors-list').innerHTML = data.map(d => `
+                    <div class="card">
+                        <h3>${escapeHtml(d.name)}</h3>
+                        <p>${escapeHtml(d.specialization)}</p>
+                        <p style="color:#888;">Опыт: ${d.experience} лет</p>
+                    </div>
+                `).join('');
+                animateCards();
+            });
+    </script>
+</body>
+</html>
